@@ -6,6 +6,7 @@ from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 # Load the signal power data
 data = pd.read_csv('new.csv', header=None, names=['count', 'power'], index_col='count')
@@ -47,7 +48,12 @@ loss, accuracy = model.evaluate(test_data, test_data)
 predictions = model.predict(test_data)
 
 # Identify the anomalies in the predictions
-anomalies = np.where(np.abs(predictions - test_data) > 3)[0]
+anomalies = np.where(np.abs(predictions - test_data) > 0.3)[0]
 
 # Print the anomalies
 print('Anomalies:', anomalies)
+
+#Mark the data points as anomalies on a plot
+plt.plot(test_data)
+plt.plot(anomalies, test_data[anomalies], 'ro')
+plt.show()

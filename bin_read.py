@@ -10,11 +10,11 @@ def run_getData_saveToFile(decimatorSocket, arg1, arg2, filename):
     decimatorSocket.send('getData:{},{}\r\n'.format(arg1, arg2).encode('utf-8'))
     getData_buf = decimatorSocket.recv(128)
 
-    if getData_buf.startswith('getData'.encode('utf-8')):
+    if getData_buf.startswith(b'getData'):
         # Get the size of data block to follow.
         #  Response looks like  getData:iii,qqq,bbb,\r\n<binary_data>
         #  bbb is the blockSize we need
-        rec = getData_buf.decode('utf-8').split(',',3)
+        rec = getData_buf.split(b',',3)
         blockSize = int(rec[2]) / BYTES_PER_FLOAT
         BUF_SIZE = int(rec[2])
 
@@ -57,20 +57,23 @@ def connectToDecimator(ip):
     connectBuf = decimatorSocket.recv(128).decode('utf-8')
     if connectBuf.find('connected') == -1:
         print('Cannot connect to Decimator: {}'.format(connectBuf))
-        sys.exit(1);
+        sys.exit(1)
     else:
         print('Connected to decimator.')
     return decimatorSocket
 
 if __name__ == "__main__":
 
-    decimatorSocket = connectToDecimator('192.168.174.55')
+    decimatorSocket = connectToDecimator('192.168.29.3')
+    decimatorSocket.send('switchPort:8\r\n'.encode('utf-8'))
+    _ = decimatorSocket.recv(100)
+    decimatorSocket.send('configSpectrum:1000000000,4000000,200000,Blackman-Harris,0,5,0\r\n'.encode('utf-8'))
 
-    decimatorSocket.send('configSpectrum:1700000000,4000000,200000,Blackman-Harris,0,5,0\r\n'.encode('utf-8'))
     configSpectrum_buf = decimatorSocket.recv(100)
 
-    if not configSpectrum_buf.startswith('configSpectrum'.encode('utf-8')):
-        msg = 'Error configuring Decimator:' + configSpectrum_buf
+
+    if not configSpectrum_buf.startswith(b'configSpectrum'):
+        msg = b'Error configuring Decimator:' + configSpectrum_buf
         print(msg)
         sys.exit(1)
 
@@ -81,15 +84,15 @@ if __name__ == "__main__":
     plt.show()
 
 
-    decimatorSocket.send('configTime:1700000000,4000000,1,400\r\n'.encode('utf-8'))
+    decimatorSocket.send('configTime:1001000000,4000000,1,400\r\n'.encode('utf-8'))
     configTime_buf = decimatorSocket.recv(100)
 
-    if not configTime_buf.startswith('configTime'.encode('utf-8')):
+    if not configTime_buf.startswith(b'configTime'):
         msg = 'Error configuring Decimator:' + configTime_buf
         print(msg)
         sys.exit(1)
 
-    bindata = run_getData_saveToFile(decimatorSocket, 2, 0, 'getData_freq_capture.bin')
+    bindata = run_getData_saveToFile(decimatorSocket, 2, 0, 'getData_time_capture.bin')
 
     plt.plot(bindata[0::2])
     plt.plot(bindata[1::2])
