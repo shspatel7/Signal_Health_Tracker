@@ -1,59 +1,65 @@
 import numpy as np
 import pandas as pd
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Dropout, LSTM, RepeatVector, TimeDistributed
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
-# Load the signal power data
-data = pd.read_csv('new.csv', header=None, names=['count', 'power'], index_col='count')
+# Load the data for signal power data
+test_data = pd.read_csv('new.csv', header=None, names=['count', 'power'], index_col='count')
 
-# Split the data into training and testing sets
-train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
+# Create a new column to mark the anomalies
+test_data['anomaly'] = np.where(np.abs(test_data['power'].diff()) > 3, 1, 0)
 
-print(train_data)
-print(test_data)
+# Plot the data
+plt.plot(test_data['power'])
+plt.show()
 
 # Normalize the data using standard scaling
 scaler = StandardScaler()
-train_data = scaler.fit_transform(train_data)
-test_data = scaler.transform(test_data)
+test_data_scaled = scaler.fit_transform(test_data[['power']])
 
-# Define the Keras model
-model = Sequential()
-model.add(Dense(256, input_dim=train_data.shape[1], activation='relu'))
-model.add(Dropout(0.2))
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.2))
-model.add(Dense(64, activation='relu'))
-model.add(Dropout(0.2))
-model.add(Dense(1, activation='sigmoid'))
+# Reshape the data for LSTM input
+test_data_reshaped = test_data_scaled.reshape(test_data_scaled.shape[0], 1, test_data_scaled.shape[1])
 
-# Compile the model
-model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=0.00001), metrics=['accuracy'])
+# Load the saved model
+model = load_model('model.h5')
 
-# Set up early stopping to prevent overfitting
-early_stop = EarlyStopping(monitor='val_loss', patience=10)
+# Print the diagram of the model
+model.summary()
 
-# Train the model
-history = model.fit(train_data, train_data, epochs=200, batch_size=64, validation_data=(test_data, test_data), callbacks=[early_stop])
+# Predict the test data
+predictions = model.predict(test_data_reshaped)
 
-# Evaluate the model on the test data
-loss, accuracy = model.evaluate(test_data, test_data)
+# Calculate the mean squared error between the predictions and the actual data
+mse = np.mean(np.power(test_data_reshaped - predictions, 2), axis=1)
 
-# Make predictions on the test data
-predictions = model.predict(test_data)
+# Mark the data points as anomalies if the MSE is above a threshold
+test_data['mse'] = mse
+test_data['anomaly_predicted'] = np.where(test_data['mse'] > 0.1, 1, 0)
 
-# Identify the anomalies in the predictions
-anomalies = np.where(np.abs(predictions - test_data) > 0.3)[0]
+#Align test data with increasing count
+test_data = test_data.sort_index()
 
-# Print the anomalies
-print('Anomalies:', anomalies)
 
-#Mark the data points as anomalies on a plot
-plt.plot(test_data)
-plt.plot(anomalies, test_data[anomalies], 'ro')
+# Plot the results
+plt.plot(test_data['power'])
+plt.plot(test_data[test_data['anomaly'] == 1].index, test_data[test_data['anomaly'] == 1]['power'], 'ro')
+plt.plot(test_data[test_data['anomaly_predicted'] == 1].index, test_data[test_data['anomaly_predicted'] == 1]['power'], 'go')
 plt.show()
+
+# Print the accuracy of the model
+accuracy = len(test_data[test_data['anomaly'] == test_data['anomaly_predicted']]) / len(test_data)
+print('Accuracy: ', accuracy)
+
+# Print the precision of the model
+precision = len(test_data[(test_data['anomaly'] == 1) & (test_data['anomaly_predicted'] == 1)]) / len(test_data[test_data['anomaly_predicted'] == 1])
+print('Precision: ', precision)
+
+#Print the index of the anomalies
+print(test_data)
+print(test_data[test_data['anomaly'] == 1].index)
+print(test_data[test_data['anomaly_predicted'] == 1].index)
