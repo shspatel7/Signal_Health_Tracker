@@ -3,6 +3,7 @@ import pandas as pd
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, LSTM, RepeatVector, TimeDistributed
 from keras.optimizers import Adam
+from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -47,11 +48,14 @@ model.add(LSTM(32, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(LSTM(64, return_sequences=True))
 model.add(Dropout(0.2))
-model.add(TimeDistributed(Dense(1)))
-model.compile(loss='mse', optimizer=Adam(lr=0.0001))
+model.add(Dense(1, kernel_regularizer=l2(0.01)))
+model.compile(loss='mse', optimizer=Adam(lr=0.0001)) # Add L2 regularization with lambda=0.01
+
+# Define early stopping callback
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
 
 # Train the model
-history = model.fit(train_data_reshaped, train_data_reshaped, epochs=100, batch_size=32, validation_data=(test_data_reshaped, test_data_reshaped))
+history = model.fit(train_data_reshaped, train_data_reshaped, epochs=150, batch_size=32, validation_data=(test_data_reshaped, test_data_reshaped), callbacks=[early_stopping], verbose=1)
 
 # Make predictions on the test data
 test_data_predictions = model.predict(test_data_reshaped)
