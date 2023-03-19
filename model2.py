@@ -61,7 +61,7 @@ model.add(Dropout(0.2))
 model.add(LSTM(64, return_sequences=True))
 model.add(Dropout(0.2))
 model.add(Dense(1, kernel_regularizer=l2(0.01)))
-model.compile(loss='mse', optimizer=Adam(learning_rate=0.0001)) # Add L2 regularization with lambda=0.01
+model.compile(loss='mae', optimizer=Adam(learning_rate=0.0001)) # Add L2 regularization with lambda=0.01
 
 # Define early stopping callback
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
@@ -88,21 +88,28 @@ plt.show()
 # plt.show()
 
 
-# Calculate the mean squared error between the predictions and the actual data
-mse = np.mean(np.power(test_data_reshaped - test_data_predictions, 2), axis=1)
+# Calculate the mean average error between the predictions and the actual data
+test_mae = np.mean(np.abs(test_data_reshaped - test_data_predictions), axis=1)
+
+# train_mae = np.mean(np.abs(train_data_reshaped - model.predict(train_data_reshaped)), axis=1)
+
+# #print the mean squared error
+# plt.hist(train_mae, bins=50)
+# plt.xlabel("Train MAE loss")
+# plt.ylabel("No of samples")
+# plt.show()
 
 
-#print the mean squared error
-plt.plot(mse)
+plt.plot(test_mae)
 plt.show()
 
-print(np.mean(mse))
-print(np.std(mse))
-print(np.mean(mse) + 3 * np.std(mse))
+print(np.mean(test_mae))
+print(np.std(test_mae))
+print(np.mean(test_mae) + 3 * np.std(test_mae))
 
 # Mark the data points as anomalies if the MSE is above a threshold
-test_data['mse'] = mse
-test_data['anomaly_predicted'] = np.where(test_data['mse'] > np.mean(test_data['mse']) + 3 * np.std(test_data['mse']), 1, 0)
+test_data['mae'] = test_mae
+test_data['anomaly_predicted'] = np.where(test_data['mae'] > 0.145, 1, 0)
 
 #Align test data with increasing count
 test_data = test_data.sort_index()
@@ -130,3 +137,7 @@ except ZeroDivisionError:
 #Print the index of the anomalies
 print(test_data[test_data['anomaly'] == 1].index)
 print(test_data[test_data['anomaly_predicted'] == 1].index)
+
+#Print the actual power values of the anomalies
+print(test_data[test_data['anomaly'] == 1]['power'])
+print(test_data[test_data['anomaly_predicted'] == 1]['power'])
