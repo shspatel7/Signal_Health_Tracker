@@ -6,7 +6,7 @@ import time
 
 BYTES = 4
 
-f = "getData_freq_capture.bin"
+f = "getData_freq_capture_1.bin"
 
 #Read the bin file and get data out of it
 with open(f, 'rb') as f:
@@ -65,5 +65,5 @@ with open("new.bin", 'rb') as f:
         for i in range(len(bindata)):
             f.write("{},{}\r".format(i, bindata[i]))
 
-    plt.plot(bindata[100:200])
+    plt.plot(bindata)
     plt.show()

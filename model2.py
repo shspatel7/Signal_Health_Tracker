@@ -32,21 +32,6 @@ train_data_scaled = scaler.fit_transform(train_data[['power']])
 test_data_scaled = scaler.transform(test_data[['power']])
 
 
-#Sort the index
-# test_data = test_data.sort_index()
-# test_data_scaled = test_data_scaled.sort_index()
-
-# #Plot the test data over the scaled test data
-# plt.plot(test_data['power'], color='blue', label='Original')
-# plt.plot(test_data.index, test_data_scaled, color='red', label='Scaled')
-# plt.legend(loc='best')
-# plt.show()
-
-
-# Reshape the data for LSTM input
-train_data_reshaped = train_data_scaled.reshape(train_data_scaled.shape[0], 1, train_data_scaled.shape[1])
-test_data_reshaped = test_data_scaled.reshape(test_data_scaled.shape[0], 1, test_data_scaled.shape[1])
-
 # Define the LSTM Autoencoder model
 model = Sequential()
 model.add(LSTM(128, input_shape=(1, 1), return_sequences=True, activation='relu'))
