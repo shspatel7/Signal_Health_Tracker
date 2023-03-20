@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM, RepeatVector, TimeDistributed
+from keras.layers import Dense, Dropout, LSTM, RepeatVector, TimeDistributed, Flatten
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
@@ -26,55 +26,73 @@ data['anomaly'] = np.where(np.abs(data['power'].diff()) > threshold, 1, 0)
 # Split the data into training and testing sets
 train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
 
-# Normalize the data using standard scaling
-scaler = StandardScaler()
-train_data_scaled = scaler.fit_transform(train_data[['power']])
-test_data_scaled = scaler.transform(test_data[['power']])
+train_data = train_data.sort_index()
+test_data = test_data.sort_index()
+
+# Create the input and output data for the model
+X = np.abs(np.diff(train_data['power']))
+y = np.array(train_data['anomaly'][1:])
 
 
-# Define the LSTM Autoencoder model
+#Reshape the data so it 3 dimensional for the LSTM model
+X = X.reshape((X.shape[0], 1, 1))
+y = y.reshape((y.shape[0], 1, 1))
+
+# Define the LSTM model with encoder-decoder architecture
 model = Sequential()
-model.add(LSTM(128, input_shape=(1, 1), return_sequences=True, activation='relu'))
-model.add(Dropout(0.2))
-model.add(LSTM(64, return_sequences=True))
-model.add(Dropout(0.2))
-model.add(LSTM(32, return_sequences=False))
-model.add(Dropout(0.2))
-model.add(RepeatVector(1))
-model.add(LSTM(32, return_sequences=True))
-model.add(Dropout(0.2))
-model.add(LSTM(64, return_sequences=True))
-model.add(Dropout(0.2))
-model.add(Dense(1, kernel_regularizer=l2(0.01)))
-model.compile(loss='mae', optimizer=Adam(learning_rate=0.0001)) # Add L2 regularization with lambda=0.01
+model.add(LSTM(128, input_shape=(1, 1), activation='relu', return_sequences=True))
+model.add(LSTM(64, activation='relu', return_sequences=True))
+model.add(LSTM(32, activation='relu', return_sequences=True))
+model.add(LSTM(16, activation='relu', return_sequences=True))
+model.add(LSTM(8, activation='relu', return_sequences=True))
+model.add(LSTM(4, activation='relu', return_sequences=True))
+model.add(LSTM(2, activation='relu', return_sequences=True))
+model.add(LSTM(1, activation='relu', return_sequences=True))
+model.add(Flatten())
+model.add(Dense(1, activation='sigmoid'))
+model.compile(loss='mae', optimizer=Adam(learning_rate=0.001), metrics=['accuracy'])
+
+
+print(model.summary())
 
 # Define early stopping callback
-early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='auto')
 
 # Train the model
-history = model.fit(train_data_reshaped, train_data_reshaped, epochs=150, batch_size=32, validation_data=(test_data_reshaped, test_data_reshaped), callbacks=[early_stopping], verbose=1)
+model.fit(X, y, epochs=100, batch_size=32, validation_split=0.2, callbacks=[early_stopping])
+
+#Change the index of the test data
+test_data.index = range(0,len(test_data))
 
 # Make predictions on the test data
-test_data_predictions = model.predict(test_data_reshaped)
+new_X = np.abs(np.diff(test_data['power']))
+#Reshape the data so it 3 dimensional for the LSTM model
+new_X = new_X.reshape((new_X.shape[0], 1, 1))
+
+test_data_predictions = model.predict(new_X)
 
 #Plot the loss
-plt.plot(history.history['loss'], label='Training loss')
-plt.plot(history.history['val_loss'], label='Validation loss')
-plt.legend()
+
+
+plt.plot(test_data_predictions)
+plt.plot(new_X[:,0,0])
 plt.show()
 
+print(test_data_predictions.shape)
+print(new_X.shape)
 
-
-# #Plot the predictions
-# test_data = test_data.sort_index()
-# plt.plot(test_data['power'], color='blue', label='Original')
-# plt.plot(test_data.index, test_data_predictions[:,0,0], color='red', label='Predicted')
-# plt.legend(loc='best')
-# plt.show()
+#Statistics of the predictions
+print("Mean: ", np.mean(test_data_predictions))
+print("Standard Deviation: ", np.std(test_data_predictions))
+print("Min: ", np.min(test_data_predictions))
+print("Max: ", np.max(test_data_predictions))
+print("Median: ", np.median(test_data_predictions))
+print("Variance: ", np.var(test_data_predictions))
+print("Percentile: ", np.percentile(test_data_predictions, 90))
 
 
 # Calculate the mean average error between the predictions and the actual data
-test_mae = np.mean(np.abs(test_data_reshaped - test_data_predictions), axis=1)
+test_mae = np.mean(np.abs(new_X - test_data_predictions), axis=1)
 
 # train_mae = np.mean(np.abs(train_data_reshaped - model.predict(train_data_reshaped)), axis=1)
 
@@ -88,16 +106,12 @@ test_mae = np.mean(np.abs(test_data_reshaped - test_data_predictions), axis=1)
 plt.plot(test_mae)
 plt.show()
 
-print(np.mean(test_mae))
-print(np.std(test_mae))
-print(np.mean(test_mae) + 3 * np.std(test_mae))
+
 
 # Mark the data points as anomalies if the MSE is above a threshold
 test_data['mae'] = test_mae
-test_data['anomaly_predicted'] = np.where(test_data['mae'] > 0.145, 1, 0)
-
-#Align test data with increasing count
-test_data = test_data.sort_index()
+prediction_threshold = np.mean(test_mae) + 4 * np.var(test_mae)
+test_data['anomaly_predicted'] = np.where(test_data['mae'] > prediction_threshold, 1, 0)
 
 
 # Plot the results

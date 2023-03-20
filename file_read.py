@@ -6,7 +6,7 @@ import time
 
 BYTES = 4
 
-f = "getData_freq_capture_1.bin"
+f = "getData_freq_capture.bin"
 
 #Read the bin file and get data out of it
 with open(f, 'rb') as f:

@@ -67,7 +67,7 @@ if __name__ == "__main__":
     decimatorSocket = connectToDecimator('192.168.29.3')
     decimatorSocket.send('switchPort:8\r\n'.encode('utf-8'))
     _ = decimatorSocket.recv(100)
-    decimatorSocket.send('configSpectrum:1000000000,4000000,200000,Blackman-Harris,0,5,400\r\n'.encode('utf-8'))
+    decimatorSocket.send('configSpectrum:850000000,150000000,200000,Blackman-Harris,0,5,500\r\n'.encode('utf-8'))
 
     configSpectrum_buf = decimatorSocket.recv(100)
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     plt.show()
 
 
-    decimatorSocket.send('configTime:1001000000,4000000,1,400\r\n'.encode('utf-8'))
+    decimatorSocket.send('configTime:1001000000,4000000,1,500\r\n'.encode('utf-8'))
     configTime_buf = decimatorSocket.recv(100)
 
     if not configTime_buf.startswith(b'configTime'):

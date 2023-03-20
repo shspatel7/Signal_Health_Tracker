@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from keras.losses import binary_crossentropy
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
+from keras.utils.vis_utils import plot_model
 import seaborn as sns
 
 # define the model architecture
@@ -20,6 +21,7 @@ model.add(Dense(1, activation='sigmoid'))
 
 print(model.summary())
 
+plot_model(model, to_file='model3.png', show_shapes=True, show_layer_names=True)
 # compile the model
 model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=0.001), metrics=['accuracy'])
 
@@ -58,6 +60,16 @@ new_X = np.abs(np.diff(new_test_data['power']))
 new_test_data['anomaly'] = np.where(np.abs(new_test_data['power'].diff()) > 3.0, 1, 0)
 predictions = model.predict(new_X)
 
+
+#Plot the loss function over the new_X values
+plt.plot(predictions)
+plt.plot(new_X)
+plt.show()
+
+
+#save the trained model
+# model.save('model3.h5')
+
 # Get the statistics of the predicted data
 print("Mean of the predicted data is: ", np.mean(predictions))
 print("Standard deviation of the predicted data is: ", np.std(predictions))
@@ -78,7 +90,7 @@ print(new_X.shape)
 # Determine the threshold value for anomaly detection in predicted data where the change is greater than 3
 # between two consecutive values in original data set
 
-predicted_data_threshold = np.mean(predictions) + 4 * np.var(predictions)
+predicted_data_threshold = np.mean(predictions) + 3 * np.var(predictions)
 print(predicted_data_threshold)
 # Add 1 more row to the prediction array in front to match the test data
 predictions = np.insert(predictions, 0, 0)
